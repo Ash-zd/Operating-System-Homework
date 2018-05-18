@@ -12,88 +12,93 @@
 #include <string.h>
 #include <semaphore.h> 
 #include <sys/wait.h>
-
-#define BUFSIZE PIPE_BUF
-int fd[2];//fd[0]=读管道 fd[1]=写管道
-sem_t *sem = NULL;
-
+#include <pthread.h>
+#define BUFSIZE 4096
 void error_quit(char *s) {
     printf("%s", s);
     exit(-1);
 }
-
-void pipe_write(int id) {
-    close(fd[0]);
-    sem_wait(sem);//申请POSIX信号量
-    char message[64];
-    printf("This is child %d, pid %d, pipe write init.\n", id + 1, getpid());
-    sprintf(message, "This is child %d, pid %d, pipe write init.\n", id + 1, getpid());
-    int ret = write(fd[1], "pipe write!", BUFSIZE);
-    if (ret != -1) {
-        printf("child %d pipe write done!\n", id + 1);
-    } 
-    else {
-        printf("child %d pipe write failed!\n", id + 1);
-    }
-    sleep(1);
-    sem_post(sem);//释放POSIX信号量
-    return;
-}
-
 int main()
 {
-    int pid[3]; //3个子进程
-    
+    int fd[2];//fd[0]=读管道 fd[1]=写管道
+    sem_t sem;
     char buf[BUFSIZE];
+    pid_t pid[3]; //3个子进程
     int len;
-
     //父进程创建管道
     if (pipe(fd) < 0) {
         error_quit("pipe failed!\n");
     }
-    if (sem_init(sem, 1, 0) < 0) {
+    if (sem_init(&sem, 1, 3) < 0) {
         error_quit("sem_init error!\n");
     }
     //fork子进程
     if ((pid[0] = fork()) < 0) {//子进程1 创建
         error_quit("fork failed!\n");//创建失败
     }
-    if (pid[0] == 0) {//子进程1 写
-        pipe_write(0);
+    else if (pid[0] == 0) {//子进程1 写
+        //sleep(1);
+        sem_wait(&sem);//申请POSIX信号量
+        close(fd[0]);
+        strcpy(buf, "This is child 1.\n");
+        int ret = write(fd[1], buf, BUFSIZE);
+        if (ret != -1) {
+            printf("child 1 pipe write done!\n");
+        }
+        else {
+            printf("child 1 pipe write failed!\n");
+        }
+        sem_post(&sem);//释放POSIX信号量
     }
     else {
         if ((pid[1] = fork()) < 0) {//子进程2 创建
             error_quit("fork failed!\n");//失败
         }
-        if (pid[1] == 0) {//子进程2 写
-            pipe_write(1);
+        else if (pid[1] == 0) {//子进程2 写
+            //sleep(1);
+            sem_wait(&sem);//申请POSIX信号量
+            close(fd[0]);
+            strcpy(buf, "This is child 2.\n");
+            int ret = write(fd[1], buf, BUFSIZE);
+            if (ret != -1) {
+                printf("child 2 pipe write done!\n");
+            } 
+            else {
+                printf("child 2 pipe write failed!\n");
+            }
+            sem_post(&sem);//释放POSIX信号量
         }
         else {
             if ((pid[2] = fork()) < 0) {//子进程3 创建
                 error_quit("fork failed!\n");//失败
             }
-            if (pid[2] == 0) {//子进程3 写
-                pipe_write(2);
+            else if (pid[2] == 0) {//子进程3 写
+                sleep(1);
+                sem_wait(&sem);//申请POSIX信号量
+                close(fd[0]);
+                strcpy(buf, "This is child 3.\n");
+                int ret = write(fd[1], buf, BUFSIZE);
+                if (ret != -1) {
+                    printf("child 3 pipe write done!\n");
+                } 
+                else {
+                    printf("child 3 pipe write failed!\n");
+                }
+                sem_post(&sem);//释放POSIX信号量
             }
             else {//父进程 等待子进程结束
-                wait(NULL);
-                wait(NULL);
-                wait(NULL);
+                pid[0] = waitpid(pid[0], NULL, WUNTRACED);
+                pid[1] = waitpid(pid[1], NULL, WUNTRACED);
+                pid[2] = waitpid(pid[2], NULL, WUNTRACED);
                 close(fd[1]);//子进程关闭写通道 父进程读管道数据
                 printf("father process %d read:\n", getpid());
-                int len;
                 for (int i = 0; i < 3; i++) {
-                    len = read(fd[0], buf, BUFSIZE);//从管道读数据
-                    if (len != -1) {
-                        write(STDOUT_FILENO, buf, len);//将读出数据写入到标准输出流
-                    } 
-                    else {
-                        error_quit("process failed when read a pipe.\n");
-                    }
+                    int ret = (int)read(fd[0], buf, sizeof(buf));
+                    printf("%d bytes of data received from child processes: %s\n", ret, buf);
                 }
             }
         }
     }
-    sem_destroy(sem);
+    sem_destroy(&sem);
     return 0;
 }
