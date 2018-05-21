@@ -25,21 +25,35 @@ struct msg_st {
 
 void sender();
 void receiver();
-sem_t *send_sem;
-sem_t *receive_sem;
-
+sem_t send_sem;
+sem_t receive_sem;
+int messageId;
 
 int main()
 {
-    pthread_t send, receive;  
-    send_sem = sem_init(send_sem, 0, 0);
-    receive_sem = sem_init(receive_sem, 0, 0);
-    int msgid = msgget((key_t)1234, 0666 | IPC_CREAT);
-    if (msgid == -1) {
+    pthread_t send, receive;
+    
+    sem_init(&send_sem, 0, 1);
+    sem_init(&receive_sem, 0, 0);
+    messageId = msgget((key_t)5555, 0666 | IPC_CREAT);
+    if (messageId < 0) {
         printf("msgget failed.\n");
         exit(-1);
     }
-    if (pthread_create())
+    if (pthread_create(&send, NULL, (void *)sender, NULL) != 0) {
+        printf("thread send initial failed!\n");
+    }
+    if (pthread_create(&receive, NULL, (void *)receiver, NULL) != 0) {
+        printf("thread receive initial failed!\n");
+    }
+
+    pthread_join(send, NULL);
+    pthread_join(receive, NULL);
+
+    printf("Done!\n");
+    sem_destroy(&send_sem);
+    sem_destroy(&receive_sem);
+    return 0;
     
 
 }
@@ -47,24 +61,24 @@ int main()
 void sender() {
     struct msg_st sendMsg;
     sendMsg.msg_type = 1;
-    int i = 0;
-    while(i != 0) {
-        sem_wait(send_sem);
-        printf("Please input message.");
+
+    for(int i = 0; i == 0; ) {
+        sem_wait(&send_sem);
+        printf("Please input message.\n");
         scanf("%s", sendMsg.text);
         if (strcmp(sendMsg.text, "exit") == 0) {
             strcpy(sendMsg.text, "end");
             i = 1;
         }
-        if (msgsnd(1234, &sendMsg, sizeof(struct msg_st), 0) == 0) {
-            sem_post(receive_sem);
+        if (msgsnd(messageId, &sendMsg, sizeof(struct msg_st), 0) == 0) {
+            sem_post(&receive_sem);
         }
         else {
             printf("message send failed.\n");
         }
     }
-    sem_wait(send_sem);
-    if (msgrcv(1234, &sendMsg, sizeof(struct msg_st), 0, 0) == -1) {
+    sem_wait(&send_sem);
+    if (msgrcv(messageId, &sendMsg, sizeof(struct msg_st), 0, 0) == -1) {
         printf("message receive failed.\n");
     } else {
         if (strcmp(sendMsg.text, "over") == 0) {
@@ -77,5 +91,25 @@ void sender() {
 void receiver() {
     struct msg_st recvMesg;
     recvMesg.msg_type = 1;
-    
+
+    for(int i = 0; i == 0;) {
+        sem_wait(&receive_sem);
+        if (msgrcv(messageId, &recvMesg, sizeof(struct msg_st), 0, 0) == -1) {
+            printf("message receive failed.\n");
+        }
+        else {
+            if (strcmp(recvMesg.text, "end") == 0) {
+                strcpy(recvMesg.text, "over");
+                if (msgsnd(messageId, &recvMesg, sizeof(struct msg_st), 0) != 0) {
+                    printf("message send failed!\n");
+                }
+                i = 1;
+            }
+            else {
+                printf("receive: %s\n", recvMesg.text);
+            }
+        }
+        sem_post(&send_sem);
+    }
+    return;
 }
