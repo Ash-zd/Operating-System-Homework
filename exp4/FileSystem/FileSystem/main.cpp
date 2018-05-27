@@ -93,7 +93,11 @@ int main()
  * 初始化用户打开文件表，将表项0分配给根目录文件，并设置根目录为当前目录。
  */
 void startsys() {
-
+	myvhard = (unsigned char *)malloc(SIZE);
+	if (myvhard == NULL) {
+		printf("虚拟磁盘初始化失败.\n");
+		exit(-1);
+	}
 }
 
 /**
