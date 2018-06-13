@@ -58,9 +58,6 @@ unsigned char      *blockAddr[BLOCKNUM];      //虚拟磁盘各个块对应地�
 block0             initBlock;
 fat                fat1[BLOCKNUM], fat2[BLOCKNUM];
 
-
-//自定义函数声明
-//锅1
 void my_format();
 void startsys();
 void my_exitsys();
@@ -68,18 +65,16 @@ int  my_create(char *filename);
 void my_rm(char *filename);
 int  my_open(char *filename);
 void my_close(int fd);
-//锅2
 void my_mkdir(char *dirname);
 void my_rmdir(char *dirname);
 void my_cd(char *dirname);
 void my_ls();
-//锅3
 int  my_write(int fd);
 int  do_write(int fd, char *text, int len, char wstyle);
 int  my_read(int fd, int len);
 int  do_read(int fd, int len, char *text);
 
-//中间函数
+//utils
 void useropen_init(useropen *openfile, int dirno, int diroff, const char* dir);
 void fcb_init(fcb *new_fcb, const char* filename, unsigned short first, unsigned char attribute);
 int check_fd(int fd);
@@ -103,7 +98,7 @@ int main()
 	char cmd[20];
 	while (scanf("%s", cmd) != EOF) {
 		if (strcmp("format", cmd) == 0) {
-
+			my_format();
 		}
 		else if (strcmp("mkdir", cmd) == 0) {
 
@@ -201,7 +196,7 @@ void my_format() {
 	memcpy(blockAddr[5], &root, sizeof(fcb));
 	strcpy(root.filename, "..");
 	memcpy(blockAddr[5] + sizeof(fcb), &root, sizeof(fcb));
-	printf("初始化完成\n");
+	printf("格式化完成\n");
 }
 
 /**
