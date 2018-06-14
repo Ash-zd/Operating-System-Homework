@@ -1,2 +1,5 @@
 ﻿  main.cpp
+c:\users\ash\desktop\operating-system-homework\exp4\filesystem\filesystem\main.cpp(232): warning C4101: “now”: 未引用的局部变量
+c:\users\ash\desktop\operating-system-homework\exp4\filesystem\filesystem\main.cpp(233): warning C4101: “nowtime”: 未引用的局部变量
+c:\users\ash\desktop\operating-system-homework\exp4\filesystem\filesystem\main.cpp(557): warning C4101: “dirfcb”: 未引用的局部变量
   FileSystem.vcxproj -> C:\Users\Ash\Desktop\Operating-System-Homework\exp4\FIleSystem\Debug\FileSystem.exe
